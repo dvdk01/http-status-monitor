@@ -65,7 +65,7 @@ func TestMonitor_MultipleURLs(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 	defer cancel()
 
-	go mon.Start(ctx)
+	go mon.Start(ctx) //nolint:errcheck
 
 	timeout := time.After(2 * time.Second)
 	var stats map[string]*schema.URLStats
@@ -125,7 +125,7 @@ func TestMonitor_Timeout(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	go mon.Start(ctx)
+	go mon.Start(ctx) //nolint:errcheck
 
 	timeout := time.After(2 * time.Second)
 	var stats map[string]*schema.URLStats
@@ -174,7 +174,7 @@ func TestMonitor_HTTPStatusCodes(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 	defer cancel()
-	go mon.Start(ctx)
+	go mon.Start(ctx) //nolint:errcheck
 
 	timeout := time.After(2 * time.Second)
 	var stats map[string]*schema.URLStats
@@ -219,7 +219,7 @@ func TestMonitor_PayloadSizeStats(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 	defer cancel()
-	go mon.Start(ctx)
+	go mon.Start(ctx) //nolint:errcheck
 
 	timeout := time.After(2 * time.Second)
 	var stats map[string]*schema.URLStats
@@ -270,7 +270,7 @@ func TestMonitor_ManyParallelURLs(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 	defer cancel()
-	go mon.Start(ctx)
+	go mon.Start(ctx) //nolint:errcheck
 
 	timeout := time.After(2 * time.Second)
 	var stats map[string]*schema.URLStats
