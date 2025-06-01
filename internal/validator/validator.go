@@ -13,7 +13,7 @@ type URLValidator struct {
 
 func NewURLValidator() *URLValidator {
 	v := validator.New()
-	v.RegisterValidation("http_protocol", validateHTTPProtocol)
+	v.RegisterValidation("http_protocol", validateHTTPProtocol) //nolint:errcheck
 	return &URLValidator{
 		validate: v,
 	}
