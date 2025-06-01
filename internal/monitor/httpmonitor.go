@@ -51,6 +51,21 @@ func (m *httpMonitor) GetStats() map[string]*schema.URLStats {
 	stats := make(map[string]*schema.URLStats)
 	for k, v := range m.stats {
 		stats[k] = v
+		stats[k] = &schema.URLStats{
+			URL:           v.URL,
+			TotalRequests: v.TotalRequests,
+			SuccessCount:  v.SuccessCount,
+			MinDuration:   v.MinDuration,
+			MaxDuration:   v.MaxDuration,
+			TotalDuration: v.TotalDuration,
+			MinPayload:    v.MinPayload,
+			MaxPayload:    v.MaxPayload,
+			TotalPayload:  v.TotalPayload,
+			StatusCodes:   make(map[int]int),
+		}
+		for code, count := range v.StatusCodes {
+			stats[k].StatusCodes[code] = count
+		}
 	}
 	return stats
 }
