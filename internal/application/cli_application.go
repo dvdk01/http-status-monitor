@@ -119,9 +119,9 @@ func dumpTable(stats map[string]*schema.URLStats) {
 			stat.MinDuration.Round(time.Millisecond),
 			stat.MaxDuration.Round(time.Millisecond),
 			stat.AvgDuration().Round(time.Millisecond),
-			stat.MinPayload,
-			stat.MaxPayload,
-			stat.AvgPayload(),
+			fmt.Sprintf("%dB", stat.MinPayload),
+			fmt.Sprintf("%dB", stat.MaxPayload),
+			fmt.Sprintf("%dB", stat.AvgPayload()),
 			statusCodes,
 		})
 	}

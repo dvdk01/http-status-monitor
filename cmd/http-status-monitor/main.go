@@ -19,6 +19,7 @@ func printUsage(programName string) {
 
 func main() {
 	args := os.Args[1:]
+	args = removeDuplicates(args)
 
 	if len(args) == 0 {
 		printUsage(os.Args[0])
@@ -42,4 +43,18 @@ func main() {
 	monitor := monitor.NewMonitor(http.DefaultClient, args, statsChan)
 
 	processor.New(monitor, display).Start()
+}
+
+func removeDuplicates(slice []string) []string {
+	seen := make(map[string]bool)
+	result := make([]string, 0, len(slice))
+
+	for _, item := range slice {
+		if !seen[item] {
+			seen[item] = true
+			result = append(result, item)
+		}
+	}
+
+	return result
 }
