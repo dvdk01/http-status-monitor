@@ -1,6 +1,9 @@
 package validator
 
 import (
+	"net/url"
+	"strings"
+
 	"github.com/go-playground/validator/v10"
 )
 
@@ -9,14 +12,25 @@ type URLValidator struct {
 }
 
 func NewURLValidator() *URLValidator {
+	v := validator.New()
+	v.RegisterValidation("http_protocol", validateHTTPProtocol)
 	return &URLValidator{
-		validate: validator.New(),
+		validate: v,
 	}
+}
+
+func validateHTTPProtocol(fl validator.FieldLevel) bool {
+	urlStr := fl.Field().String()
+	parsedURL, err := url.Parse(urlStr)
+	if err != nil {
+		return false
+	}
+	return strings.HasPrefix(parsedURL.Scheme, "http")
 }
 
 func (v *URLValidator) ValidateURL(url string) error {
 	type urlStruct struct {
-		URL string `validate:"required,url"`
+		URL string `validate:"required,url,http_protocol"`
 	}
 
 	return v.validate.Struct(urlStruct{URL: url})
