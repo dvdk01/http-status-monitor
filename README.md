@@ -32,9 +32,6 @@ go install github.com/dvdk01/http-status-monitor/cmd/http-status-monitor@latest
 ```bash
 # Build the image
 docker build -t http-status-monitor .
-
-# Or pull from Docker Hub (when available)
-docker pull dvdk01/http-status-monitor
 ```
 
 ## Usage
