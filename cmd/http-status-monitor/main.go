@@ -1,9 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 
 	"github.com/dvdk01/http-status-monitor/internal/application"
 	"github.com/dvdk01/http-status-monitor/internal/monitor"
@@ -42,7 +46,19 @@ func main() {
 	display := application.NewCLIApplication(statsChan)
 	monitor := monitor.NewMonitor(http.DefaultClient, args, statsChan)
 
-	processor.New(monitor, display).Start()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var wg sync.WaitGroup
+
+	go func() {
+		sigterm := make(chan os.Signal, 1)
+		signal.Notify(sigterm, syscall.SIGINT, syscall.SIGTERM)
+
+		<-sigterm
+		cancel()
+	}()
+
+	processor.New(&wg, monitor, display).Start(ctx)
 }
 
 func removeDuplicates(slice []string) []string {

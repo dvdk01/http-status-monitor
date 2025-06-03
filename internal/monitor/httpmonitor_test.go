@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"context"
 	"errors"
 	"io"
 	"net/http"
@@ -103,7 +104,9 @@ func TestHTTPMonitor_makeRequest(t *testing.T) {
 				stats:  make(map[string]*schema.URLStats),
 			}
 
-			result := monitor.makeRequest(tt.url, time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			result := monitor.makeRequest(ctx, tt.url, time.Second)
 
 			// Ověření základních vlastností
 			assert.Equal(t, tt.expected.URL, result.URL)
