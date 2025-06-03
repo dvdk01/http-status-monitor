@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/dvdk01/http-status-monitor/internal/schema"
@@ -14,15 +15,21 @@ import (
 )
 
 type cliApplication struct {
-	statsChan chan map[string]*schema.URLStats
+	statsChan chan *schema.URLStats
+	stats     map[string]*schema.URLStats
+	mutex     sync.RWMutex
 }
 
-func NewCLIApplication(statsChan chan map[string]*schema.URLStats) *cliApplication {
-	return &cliApplication{statsChan: statsChan}
+func NewCLIApplication(statsChan chan *schema.URLStats) *cliApplication {
+	return &cliApplication{
+		statsChan: statsChan,
+		stats:     make(map[string]*schema.URLStats),
+	}
 }
 
 func (ca *cliApplication) renderStats(stats map[string]*schema.URLStats) {
-	ca.clear()
+	ca.mutex.Lock()
+	defer ca.mutex.Unlock()
 	dumpTable(stats)
 }
 
@@ -36,18 +43,18 @@ func (ca *cliApplication) Render(stats map[string]*schema.URLStats) {
 }
 
 func (ca *cliApplication) Start(ctx context.Context) error {
-
 	go func() {
 		for {
 			select {
 			case <-ctx.Done():
 				return
-			case stats := <-ca.statsChan:
-				ca.Render(stats)
-
+			case stat := <-ca.statsChan:
+				ca.mutex.Lock()
+				ca.stats[stat.URL] = stat
+				ca.mutex.Unlock()
+				ca.Render(ca.stats)
 			}
 		}
-
 	}()
 
 	return nil
