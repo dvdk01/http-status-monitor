@@ -2,7 +2,6 @@ package monitor
 
 import (
 	"context"
-
 	"github.com/dvdk01/http-status-monitor/internal/schema"
 )
 
@@ -11,5 +10,7 @@ type Monitor interface {
 
 	Stop() error
 
-	GetStats() map[string]*schema.URLStats
+	GetStats() *schema.URLStats
+
+	GetURL() string
 }

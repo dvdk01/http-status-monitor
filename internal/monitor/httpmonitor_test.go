@@ -99,7 +99,7 @@ func TestHTTPMonitor_makeRequest(t *testing.T) {
 				)
 			}
 
-			monitor := &httpMonitor{
+			monitor := &urlMonitor{
 				client: client,
 				stats:  make(map[string]*schema.URLStats),
 			}
@@ -216,7 +216,7 @@ func TestHTTPMonitor_updateStats(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			monitor := &httpMonitor{
+			monitor := &urlMonitor{
 				stats: tt.initialStats,
 			}
 
@@ -260,7 +260,7 @@ func TestHTTPMonitor_GetStats(t *testing.T) {
 		},
 	}
 
-	monitor := &httpMonitor{
+	monitor := &urlMonitor{
 		stats: initialStats,
 	}
 

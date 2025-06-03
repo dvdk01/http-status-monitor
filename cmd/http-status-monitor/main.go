@@ -10,10 +10,8 @@ import (
 	"syscall"
 
 	"github.com/dvdk01/http-status-monitor/internal/application"
-	"github.com/dvdk01/http-status-monitor/internal/monitor"
-	"github.com/dvdk01/http-status-monitor/internal/schema"
-
 	"github.com/dvdk01/http-status-monitor/internal/processor"
+	"github.com/dvdk01/http-status-monitor/internal/schema"
 	"github.com/dvdk01/http-status-monitor/internal/validator"
 )
 
@@ -40,12 +38,10 @@ func main() {
 		os.Exit(1)
 	}
 
-	statsChan := make(chan map[string]*schema.URLStats)
+	statsChan := make(chan *schema.URLStats)
 	defer close(statsChan)
 
 	display := application.NewCLIApplication(statsChan)
-	monitor := monitor.NewMonitor(http.DefaultClient, args, statsChan)
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	var wg sync.WaitGroup
@@ -58,7 +54,7 @@ func main() {
 		cancel()
 	}()
 
-	processor.New(&wg, monitor, display).Start(ctx)
+	processor.New(&wg, http.DefaultClient, args, statsChan, display).Start(ctx)
 }
 
 func removeDuplicates(slice []string) []string {
