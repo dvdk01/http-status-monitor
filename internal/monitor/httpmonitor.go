@@ -77,7 +77,7 @@ func (m *httpMonitor) monitorURL(ctx context.Context, url string, wg *sync.WaitG
 	defer ticker.Stop()
 
 	// Execute initial request immediately without waiting for the first tick
-	result := m.makeRequest(url, timeout)
+	result := m.makeRequest(ctx, url, timeout)
 	m.updateStats(result)
 	go func() {
 		m.statsChan <- m.GetStats()
@@ -88,7 +88,7 @@ func (m *httpMonitor) monitorURL(ctx context.Context, url string, wg *sync.WaitG
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			result := m.makeRequest(url, timeout)
+			result := m.makeRequest(ctx, url, timeout)
 			m.updateStats(result)
 			go func() {
 				m.statsChan <- m.GetStats()
@@ -98,11 +98,11 @@ func (m *httpMonitor) monitorURL(ctx context.Context, url string, wg *sync.WaitG
 	}
 }
 
-func (m *httpMonitor) makeRequest(url string, timeout time.Duration) schema.RequestResult {
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+func (m *httpMonitor) makeRequest(ctx context.Context, url string, timeout time.Duration) schema.RequestResult {
+	reqCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), timeout)
 	defer cancel()
 
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(reqCtx, "GET", url, nil)
 	if err != nil {
 		return schema.RequestResult{
 			URL:     url,

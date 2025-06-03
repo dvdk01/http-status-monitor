@@ -2,49 +2,18 @@ package e2e
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/jarcoal/httpmock"
+
 	"github.com/dvdk01/http-status-monitor/internal/monitor"
 	"github.com/dvdk01/http-status-monitor/internal/schema"
 	"github.com/stretchr/testify/assert"
 )
-
-type staticResponder struct {
-	status int
-	body   string
-}
-
-func (s *staticResponder) RoundTrip(req *http.Request) (*http.Response, error) {
-	resp := &http.Response{
-		StatusCode: s.status,
-		Body:       io.NopCloser(strings.NewReader(s.body)),
-		Header:     make(http.Header),
-		Request:    req,
-	}
-	return resp, nil
-}
-
-type multiResponder struct {
-	responders map[string]*staticResponder
-}
-
-func (m *multiResponder) RoundTrip(req *http.Request) (*http.Response, error) {
-	if r, ok := m.responders[req.URL.String()]; ok {
-		return r.RoundTrip(req)
-	}
-	return nil, fmt.Errorf("no responder for %s", req.URL.String())
-}
-
-type timeoutRoundTripper struct{}
-
-func (t *timeoutRoundTripper) RoundTrip(*http.Request) (*http.Response, error) {
-	return nil, context.DeadlineExceeded
-}
 
 // Test case for monitoring multiple URLs simultaneously
 // Verifies that the monitor can handle multiple URLs in parallel
@@ -53,11 +22,30 @@ func TestMonitor_MultipleURLs(t *testing.T) {
 	t.Parallel()
 
 	urls := []string{"https://test1.com", "https://test2.com"}
-	responder := &multiResponder{responders: map[string]*staticResponder{
-		"https://test1.com": {status: 200, body: "ok1"},
-		"https://test2.com": {status: 404, body: "not found"},
-	}}
-	client := &http.Client{Transport: responder}
+	transport := httpmock.NewMockTransport()
+	client := &http.Client{Transport: transport}
+	defer transport.Reset()
+
+	transport.RegisterResponder("GET", "https://test1.com",
+		func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(strings.NewReader("ok1")),
+				Header:     make(http.Header),
+				Request:    req,
+			}, nil
+		},
+	)
+	transport.RegisterResponder("GET", "https://test2.com",
+		func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: 404,
+				Body:       io.NopCloser(strings.NewReader("not found")),
+				Header:     make(http.Header),
+				Request:    req,
+			}, nil
+		},
+	)
 
 	statsChan := make(chan map[string]*schema.URLStats, 10)
 	mon := monitor.NewMonitor(client, urls, statsChan)
@@ -118,7 +106,15 @@ func TestMonitor_Timeout(t *testing.T) {
 	t.Parallel()
 
 	url := "https://timeout.com"
-	client := &http.Client{Transport: &timeoutRoundTripper{}}
+	transport := httpmock.NewMockTransport()
+	client := &http.Client{Transport: transport}
+	defer transport.Reset()
+
+	transport.RegisterResponder("GET", url,
+		func(req *http.Request) (*http.Response, error) {
+			return nil, context.DeadlineExceeded
+		},
+	)
 
 	statsChan := make(chan map[string]*schema.URLStats, 5)
 	mon := monitor.NewMonitor(client, []string{url}, statsChan)
@@ -162,12 +158,40 @@ func TestMonitor_HTTPStatusCodes(t *testing.T) {
 	t.Parallel()
 
 	urls := []string{"https://ok.com", "https://redirect.com", "https://fail.com"}
-	responder := &multiResponder{responders: map[string]*staticResponder{
-		"https://ok.com":       {status: 200, body: "ok"},
-		"https://redirect.com": {status: 302, body: "redirect"},
-		"https://fail.com":     {status: 500, body: "fail"},
-	}}
-	client := &http.Client{Transport: responder}
+	transport := httpmock.NewMockTransport()
+	client := &http.Client{Transport: transport}
+	defer transport.Reset()
+
+	transport.RegisterResponder("GET", "https://ok.com",
+		func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(strings.NewReader("ok")),
+				Header:     make(http.Header),
+				Request:    req,
+			}, nil
+		},
+	)
+	transport.RegisterResponder("GET", "https://redirect.com",
+		func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: 302,
+				Body:       io.NopCloser(strings.NewReader("redirect")),
+				Header:     make(http.Header),
+				Request:    req,
+			}, nil
+		},
+	)
+	transport.RegisterResponder("GET", "https://fail.com",
+		func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: 500,
+				Body:       io.NopCloser(strings.NewReader("fail")),
+				Header:     make(http.Header),
+				Request:    req,
+			}, nil
+		},
+	)
 
 	statsChan := make(chan map[string]*schema.URLStats, 10)
 	mon := monitor.NewMonitor(client, urls, statsChan)
@@ -212,7 +236,20 @@ func TestMonitor_PayloadSizeStats(t *testing.T) {
 
 	url := "https://payload.com"
 	body := "1234567890"
-	client := &http.Client{Transport: &staticResponder{status: 200, body: body}}
+	transport := httpmock.NewMockTransport()
+	client := &http.Client{Transport: transport}
+	defer transport.Reset()
+
+	transport.RegisterResponder("GET", url,
+		func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(strings.NewReader(body)),
+				Header:     make(http.Header),
+				Request:    req,
+			}, nil
+		},
+	)
 
 	statsChan := make(chan map[string]*schema.URLStats, 5)
 	mon := monitor.NewMonitor(client, []string{url}, statsChan)
@@ -257,13 +294,24 @@ func TestMonitor_ManyParallelURLs(t *testing.T) {
 	t.Parallel()
 
 	urls := []string{}
-	responders := map[string]*staticResponder{}
+	transport := httpmock.NewMockTransport()
+	client := &http.Client{Transport: transport}
+	defer transport.Reset()
+
 	for i := 0; i < 10; i++ {
 		url := "https://multi" + string(rune('A'+i)) + ".com"
 		urls = append(urls, url)
-		responders[url] = &staticResponder{status: 200, body: "ok"}
+		transport.RegisterResponder("GET", url,
+			func(req *http.Request) (*http.Response, error) {
+				return &http.Response{
+					StatusCode: 200,
+					Body:       io.NopCloser(strings.NewReader("ok")),
+					Header:     make(http.Header),
+					Request:    req,
+				}, nil
+			},
+		)
 	}
-	client := &http.Client{Transport: &multiResponder{responders: responders}}
 
 	statsChan := make(chan map[string]*schema.URLStats, 20)
 	mon := monitor.NewMonitor(client, urls, statsChan)
