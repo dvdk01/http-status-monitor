@@ -15,7 +15,7 @@ COPY . .
 RUN go build -o http-status-monitor ./cmd/http-status-monitor
 
 
-FROM alpine:3.22
+FROM alpine:3.23
 
 WORKDIR /app
 COPY --from=builder /app/http-status-monitor .
